@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -106,7 +107,13 @@ CELERY_RESULT_BACKEND = (
     f":{os.getenv('REDIS_PASSWORD')}"
     f"@{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}/{os.getenv('REDIS_DB')}"
 )
-CELERY_BEAT_SCHEDULE = {}
+
+CELERY_BEAT_SCHEDULE = {
+    "fetch_youtube_data": {
+        "task": "videos.tasks.fetch_youtube_data",
+        "schedule": timedelta(seconds=30),
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
