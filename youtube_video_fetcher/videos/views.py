@@ -1,3 +1,9 @@
-from django.shortcuts import render
+from rest_framework.generics import ListAPIView
 
-# Create your views here.
+from .models import Video
+from .serializers import VideoSerializer
+
+
+class VideoListView(ListAPIView):
+    queryset = Video.objects.all().order_by('-published_datetime')
+    serializer_class = VideoSerializer
