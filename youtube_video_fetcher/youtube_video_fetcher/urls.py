@@ -17,9 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from videos.views import VideoListView
+from videos.views import VideoListView, VideoSearchView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("videos/", VideoListView.as_view(), name="video-list"),
+    path("videos/search/", VideoSearchView.as_view(), name="video-search"),
 ]
