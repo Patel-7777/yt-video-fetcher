@@ -1,0 +1,111 @@
+services:
+  database:
+    container_name: database
+    image: postgres:16-alpine
+    volumes:
+      - yt_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 5s
+      retries: 10
+      timeout: 5s
+    ports:
+      - 5432:5432
+    environment:
+      - DB_HOST=postgresql
+      - POSTGRES_DB=yt_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+
+  cache:
+    container_name: cache
+    image: redis:7-alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - yt_cc_data:/data
+    command: redis-server --requirepass redis
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      retries: 10
+      timeout: 5s
+
+  message-queue:
+    container_name: message-queue
+    image: rabbitmq:3.13-alpine
+    volumes:
+      - yt_mq_data:/data
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      interval: 5s
+      retries: 10
+      timeout: 5s
+    ports:
+      - 5672:5672
+#      - 15672:15672
+    environment:
+      - RABBITMQ_CONFIG_FILE=/etc/rabbitmq/rabbitmq.conf
+
+
+  backend:
+    container_name: backend
+    build: .
+    volumes:
+      - .:/app
+    ports:
+      - 8000:8000
+    depends_on:
+      cache:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+    env_file:
+      - .env
+
+
+  celery:
+    container_name: celery
+    build: .
+    entrypoint: [
+      "celery",
+      "-A",
+      "youtube_video_fetcher",
+      "worker",
+      "--loglevel=info",
+    ]
+    volumes:
+      - .:/app
+    depends_on:
+      cache:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  celery_beat:
+    build: .
+    command: ["celery", "-A", "youtube_video_fetcher", "beat", "--loglevel=info",]
+    volumes:
+      - .:/app
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    env_file:
+      - .env
+
+
+volumes:
+  yt_db_data:
+  yt_cc_data:
+  yt_mq_data:
